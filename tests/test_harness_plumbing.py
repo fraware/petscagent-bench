@@ -23,7 +23,7 @@ class HarnessPlumbingTest(unittest.TestCase):
         calls = []
 
         class StubClient:
-            async def run_executable(self, executable, nsize, args, valgrind=False):
+            async def run_executable(self, executable, nsize, args, valgrind=False, timeout=None):
                 calls.append((nsize, args))
                 return f"{1e-5 / (len(calls) ** 2):.6e}"
 
@@ -61,7 +61,7 @@ class HarnessPlumbingTest(unittest.TestCase):
         calls = []
 
         class StubClient:
-            async def run_executable(self, executable, nsize, args, valgrind=False):
+            async def run_executable(self, executable, nsize, args, valgrind=False, timeout=None):
                 calls.append((nsize, args))
                 return "1.0"
 
@@ -87,7 +87,7 @@ class HarnessPlumbingTest(unittest.TestCase):
         calls = []
 
         class StubClient:
-            async def run_executable(self, executable, nsize, args, valgrind=False):
+            async def run_executable(self, executable, nsize, args, valgrind=False, timeout=None):
                 calls.append((nsize, args, valgrind))
                 return "1.0"
 
