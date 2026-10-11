@@ -12,6 +12,8 @@ ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.evaluators.quality.petsc_quality.error_handling import ErrorHandlingQuality
+from src.evaluators.quality.algorithm_quality.algorithm_appropriateness import AlgorithmResponse
+from src.util.llm_client import normalize_structured_response
 
 
 class FakeMCPClient:
@@ -35,6 +37,19 @@ class FakeFile:
 
 
 class CodeFixTests(unittest.TestCase):
+    def test_algorithm_feedback_accepts_structured_judge_explanations(self):
+        payload = normalize_structured_response({
+            "score": 8,
+            "confidence": 0.8,
+            "approach_suitable": True,
+            "feedback": {"summary": "sound", "limitations": ["cost"]},
+        })
+        response = AlgorithmResponse.model_validate(payload)
+        self.assertEqual(
+            response.feedback,
+            '{"limitations": ["cost"], "summary": "sound"}',
+        )
+
     def test_error_handling_prefers_petsccall(self):
         evaluator = ErrorHandlingQuality()
         modern = """
@@ -107,8 +122,9 @@ class CodeFixTests(unittest.TestCase):
     def test_configuration_preserves_artifact_defaults(self):
         text = (ROOT / "config/green_agent_config.yaml").read_text()
         for expected in (
-            'model: "anthropic/claudeopus46"',
+            'model: "anthropic/claudeopus5"',
             'api_base_url: "https://apps.inside.anl.gov/argoapi"',
+            "temperature: null",
             "tolerance: 1.0e-3",
             "excellent_time_sec: 0.5",
             "good_time_sec: 1.0",

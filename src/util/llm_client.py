@@ -11,6 +11,14 @@ USE_ASKSAGE = False # do not change unless you know how to use ANL AskSage
 dotenv.load_dotenv()
 
 
+def normalize_structured_response(data: Any) -> Any:
+    """Normalize common harmless judge variations before schema validation."""
+    if isinstance(data, dict) and "feedback" in data and not isinstance(data["feedback"], str):
+        data = dict(data)
+        data["feedback"] = json.dumps(data["feedback"], sort_keys=True)
+    return data
+
+
 class LLMClient:
     """Client for making LLM API calls."""
 
@@ -58,10 +66,14 @@ class LLMClient:
             completion_kwargs = {
                 'model': self.model,
                 'messages': messages,
-                'temperature': self.temperature,
                 'response_format': {"type": "json_object"},
                 'timeout': 300,
             }
+            # None means "don't send": some models (e.g. Opus 5) reject
+            # the temperature parameter outright, while 0.0 is a valid
+            # explicit value, so test for None rather than truthiness.
+            if self.temperature is not None:
+                completion_kwargs['temperature'] = self.temperature
             if self.max_tokens:
                 completion_kwargs['max_tokens'] = int(self.max_tokens)
             litellm.ssl_verify = False
@@ -91,6 +103,7 @@ class LLMClient:
             if isinstance(data, list) and data:
                 # Use first element if it's an array of objects
                 data = data[0]
+            data = normalize_structured_response(data)
 
             # Validate with pydantic model
             return response_model(**data)
@@ -126,7 +139,7 @@ class LLMClient:
         response = await acompletion(
             model=self.model,
             messages=messages,
-            temperature=self.temperature,
+            **({"temperature": self.temperature} if self.temperature is not None else {}),
         )
 
         return response.choices[0].message.content

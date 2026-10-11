@@ -2,7 +2,8 @@
 
 import time
 from typing import Any, Dict, Optional
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field
 
 from ...base import Evaluator, EvaluatorType, EvaluationResult
 from src.util.llm_client import LLMClient
@@ -14,7 +15,7 @@ class AlgorithmResponse(BaseModel):
     confidence: float  # 0-1
     feedback: str
     approach_suitable: bool
-    better_alternatives: list[str] = []
+    better_alternatives: list[str] = Field(default_factory=list)
 
 
 class AlgorithmAppropriatenessQuality(Evaluator):
