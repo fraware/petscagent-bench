@@ -810,7 +810,21 @@ class Agent:
         # input_text = get_message_text(message)
         data_file_path = Path("./data")
         all_data = read_from_json(data_file_path)
-        test_data = select_problems(all_data, self.problems)
+        if self.replay_index is not None and not self.problems:
+            recorded_names = set(self.replay_index)
+            available_names = {d["problem_name"] for d in all_data}
+            missing = recorded_names - available_names
+            if missing:
+                raise ValueError(
+                    "replay file and data/ disagree. Only in the replay file: "
+                    f"{', '.join(sorted(missing))}"
+                )
+            # A filtered live run records a legitimate subset of data/. Replay
+            # exactly those submissions; problems added to data/ later have no
+            # recorded source and therefore do not belong to this replay.
+            test_data = [d for d in all_data if d["problem_name"] in recorded_names]
+        else:
+            test_data = select_problems(all_data, self.problems)
         limit = self.max_num_prob or len(test_data)
         selected = test_data[:limit]
         if self.problems:
@@ -1035,11 +1049,11 @@ class Agent:
         # it never lands on the run it is replaying.
         suffix = f"-s{self.pass_index}" if self.pass_index else ""
         aggregate_name = f"{prefix}{suffix}.json"
-        # A narrowed live run writes none, rather than replace a file holding
-        # problems it never scored, and composes one from the tree instead. A
-        # narrowed rescore keeps its -sN name, which cannot land on a file
-        # holding more than it.
-        narrowed = bool(self.problems) and self.replay_index is None
+        # A narrowed run writes its per-problem score without manufacturing a
+        # partial aggregate. Live runs then refresh the aggregate from the
+        # score tree; a replay leaves aggregation entirely to an explicit
+        # `main.py aggregate` call.
+        narrowed = bool(self.problems)
         local_path = None if narrowed else output_dir / aggregate_name
 
         local_path, json_data = self._write_aggregate(
@@ -1048,6 +1062,11 @@ class Agent:
         )
         if local_path is not None:
             print(f"@@@ Green agent: Saved results to {local_path}")
+        elif self.replay_index is not None:
+            print(
+                f"@@@ Green agent: Replayed only '{self.problems}'; wrote "
+                f"per-problem scores under {scores_dir} without aggregation."
+            )
         else:
             # Only this variant and judge, so a narrowed run never rewrites an
             # aggregate it has nothing to do with.

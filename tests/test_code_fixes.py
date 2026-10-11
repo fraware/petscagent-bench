@@ -625,8 +625,8 @@ class FakeUpdater:
 class ARescoreScoresTheWholeRecordedRunTest(unittest.TestCase):
     """An unnarrowed rescore covers exactly the set the replayed file holds.
 
-    With --problems it covers a subset of it, deliberately, but a problem the
-    file never recorded has no submission to replay in either case.
+    With --problems it covers a subset deliberately. Problems newly added to
+    data/ are ignored because the replay contains no submission for them.
     """
 
     def run_against(self, recorded_names, dataset_names):
@@ -645,13 +645,11 @@ class ARescoreScoresTheWholeRecordedRunTest(unittest.TestCase):
                 asyncio.run(agent.run(None, None))
         return str(caught.exception)
 
-    def test_a_disagreement_in_either_direction_aborts_before_scoring(self):
+    def test_a_recorded_problem_missing_from_data_aborts_before_scoring(self):
         # A recorded problem gone from data/ has no specification left to
-        # grade against. A problem only in data/ has no submission to replay
-        # and would otherwise be written down as a FAIL at zero.
+        # grade against. Extra problems in data/ are valid and ignored.
         message = self.run_against(["alpha", "beta"], ["beta", "gamma"])
         self.assertIn("Only in the replay file: alpha", message)
-        self.assertIn("Only in data/: gamma", message)
 
 
 class DerivedSummaryTest(unittest.TestCase):
